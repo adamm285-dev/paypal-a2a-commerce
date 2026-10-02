@@ -6,14 +6,15 @@ import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import {
   ShieldCheck,
   Zap,
-  Activity,
-  CreditCard,
   PhoneCall,
   Sliders,
   Eye,
   Edit3,
   X,
   Lock,
+  LayoutGrid,
+  Calendar,
+  Network,
 } from 'lucide-react';
 import {
   initialA2aTransactions,
@@ -30,6 +31,8 @@ import {
   type AgentNegotiationResponse,
   type ProvisioningResult,
 } from './services/paypalAgentService';
+import { BryntumDispatchScheduler } from './components/BryntumDispatchScheduler';
+import { ZapierMcpView } from './components/ZapierMcpView';
 import './App.css';
 
 // 1. Initialize AG Studio License if supplied via environment
@@ -42,6 +45,7 @@ if (studioLicenseKey) {
 }
 
 export function App() {
+  const [activeTab, setActiveTab] = useState<'ag-studio' | 'bryntum' | 'zapier'>('ag-studio');
   const [mode, setMode] = useState<AgStudioMode>('view');
   const [transactions, setTransactions] = useState<A2aTransaction[]>(initialA2aTransactions);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -166,41 +170,89 @@ export function App() {
           <div className="brand-titles">
             <h1>FieldSmith Pro &mdash; Autonomous A2A Commerce Portal</h1>
             <p className="brand-subtitle">
-              Solo Tradesperson Autonomous Telephony Fleet &bull; Powered by PayPal Agentic Commerce &amp; AG Studio
+              Solo Tradesperson Telephony Fleet &bull; Powered by PayPal Agentic Commerce, AG Studio &amp; Bryntum
             </p>
           </div>
         </div>
 
-        <div className="header-badges">
-          <span className="badge badge-paypal">
-            <CreditCard size={12} /> PayPal AI-Toolkit Active
-          </span>
-          <span className="badge badge-ag-studio">
-            <Activity size={12} /> AG Studio v3.0.0 {studioLicenseKey ? 'Licensed' : 'Trial'}
-          </span>
-          <span className="badge badge-fcc-tcpa">
-            <ShieldCheck size={12} /> 100% Inbound TCPA Safe
-          </span>
+        {/* View Selection Tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: '8px', padding: '3px', border: '1px solid #334155' }}>
+          <button
+            onClick={() => setActiveTab('ag-studio')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: activeTab === 'ag-studio' ? '#0284c7' : 'transparent',
+              color: activeTab === 'ag-studio' ? '#fff' : '#94a3b8',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <LayoutGrid size={14} /> AG Studio Fleet Ledger
+          </button>
+          <button
+            onClick={() => setActiveTab('bryntum')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: activeTab === 'bryntum' ? '#0284c7' : 'transparent',
+              color: activeTab === 'bryntum' ? '#fff' : '#94a3b8',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Calendar size={14} /> Bryntum Territory Dispatch
+          </button>
+          <button
+            onClick={() => setActiveTab('zapier')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: activeTab === 'zapier' ? '#0284c7' : 'transparent',
+              color: activeTab === 'zapier' ? '#fff' : '#94a3b8',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Network size={14} /> Zapier MCP Bridge
+          </button>
         </div>
 
         <div className="header-actions">
-          {/* Mode toggle */}
-          <div className="mode-toggle-group">
-            <button
-              className={`mode-btn ${mode === 'view' ? 'active' : ''}`}
-              onClick={() => setMode('view')}
-              title="Executive Dashboard View"
-            >
-              <Eye size={14} /> View
-            </button>
-            <button
-              className={`mode-btn ${mode === 'edit' ? 'active' : ''}`}
-              onClick={() => setMode('edit')}
-              title="Interactive Report Editor"
-            >
-              <Edit3 size={14} /> Edit Mode
-            </button>
-          </div>
+          {/* AG Studio Mode toggle (only visible when in AG Studio view) */}
+          {activeTab === 'ag-studio' && (
+            <div className="mode-toggle-group">
+              <button
+                className={`mode-btn ${mode === 'view' ? 'active' : ''}`}
+                onClick={() => setMode('view')}
+                title="Executive Dashboard View"
+              >
+                <Eye size={14} /> View
+              </button>
+              <button
+                className={`mode-btn ${mode === 'edit' ? 'active' : ''}`}
+                onClick={() => setMode('edit')}
+                title="Interactive Report Editor"
+              >
+                <Edit3 size={14} /> Edit
+              </button>
+            </div>
+          )}
 
           <button className="btn-simulate" onClick={() => setIsModalOpen(true)}>
             <Sliders size={15} /> Simulate A2A Purchase
@@ -208,14 +260,20 @@ export function App() {
         </div>
       </header>
 
-      {/* Main AG Studio Embedded Analytics Canvas */}
+      {/* Main Content Area */}
       <main className="studio-canvas-container">
-        <AgStudio
-          data={studioData}
-          mode={mode}
-          initialState={initialDashboardState}
-          style={{ width: '100%', height: '100%' }}
-        />
+        {activeTab === 'ag-studio' && (
+          <AgStudio
+            data={studioData}
+            mode={mode}
+            initialState={initialDashboardState}
+            style={{ width: '100%', height: '100%' }}
+          />
+        )}
+
+        {activeTab === 'bryntum' && <BryntumDispatchScheduler />}
+
+        {activeTab === 'zapier' && <ZapierMcpView />}
       </main>
 
       {/* Modal: A2A Commerce Negotiation & Subscription Simulator */}
@@ -399,7 +457,6 @@ export function App() {
                         }}
                         onError={(err) => {
                           console.warn('[PayPal]: Sandbox interaction fallback trigger:', err);
-                          // Provide simulated approval for sandbox demo testing
                           const simulatedSubId = `I-PP${Math.floor(100000 + Math.random() * 900000)}`;
                           handleSubscriptionApproved(simulatedSubId);
                         }}
@@ -470,7 +527,7 @@ export function App() {
                     style={{ alignSelf: 'flex-start', marginTop: '8px' }}
                     onClick={() => setIsModalOpen(false)}
                   >
-                    View in AG Studio Ledger
+                    View in Dashboard
                   </button>
                 </div>
               )}

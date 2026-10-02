@@ -1,0 +1,368 @@
+openapi: 3.1.0
+info:
+  title: FieldSmith A2A Agentic Commerce & Telephony API
+  description: >
+    Autonomous Agent-to-Agent (A2A) Commerce Protocol for Trade Contractors.
+    Enables Buyer AI Agents to discover trade services, negotiate scoped commitments,
+    execute autonomous PayPal Subscriptions & deposit locks, allocate KYC-verified
+    telephony DIDs, and trigger downline CRM synchronizations via Zapier MCP.
+  version: 1.0.0
+  contact:
+    name: FieldSmith Pro Developer Relations
+    url: https://github.com/adamm285-dev/paypal-a2a-commerce
+    email: dev@fieldsmith.pro
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.fieldsmith.pro
+    description: Production Cloud Gateway (Google Cloud us-east1)
+  - url: http://localhost:8000
+    description: Local Sandbox Development Server
+
+paths:
+  /api/agent/catalog:
+    get:
+      summary: Retrieve Agentic Trade Service Catalog & MCP Schemas
+      description: Returns available trade verticals, subscription tiers, and autonomous booking schemas for Buyer Agents.
+      operationId: getTradeCatalog
+      tags:
+        - Agent Catalog
+      responses:
+        '200':
+          description: Successfully retrieved trade catalog.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogResponse'
+
+  /api/agent/quote:
+    post:
+      summary: Request Autonomous Scope Valuation & Deposit Quote
+      description: Evaluates trade requirements (square footage, material, urgency) and calculates required booking deposit.
+      operationId: calculateTradeQuote
+      tags:
+        - Quoting & Scoping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+      responses:
+        '200':
+          description: Calculated quote and required deposit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+
+  /api/agent/spending-mandate/evaluate:
+    post:
+      summary: Validate Buyer Agent Spending Mandate
+      description: Verifies whether the requested recurring subscription or job deposit falls within the buyer's programmatic spending limits.
+      operationId: evaluateSpendingMandate
+      tags:
+        - Autonomous Governance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpendingMandateRequest'
+      responses:
+        '200':
+          description: Spending mandate approval or violation status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpendingMandateResponse'
+
+  /api/agent/provision:
+    post:
+      summary: Autonomous KYC DID Allocation & Carrier Onboarding
+      description: Post-subscription webhook allocating a dedicated 10DLC Telnyx telephone DID upon verified PayPal subscription confirmation.
+      operationId: provisionContractorLine
+      tags:
+        - Telephony Provisioning
+      security:
+        - PayPalWebhookSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvisionRequest'
+      responses:
+        '201':
+          description: Dedicated business telephone line successfully allocated and active.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvisionResponse'
+
+  /api/agent/dispatch/lock-slot:
+    post:
+      summary: Lock Bryntum Territory Dispatch Slot via Deposit
+      description: Atomically reserves a 75-minute estimate window across 4 territory zones upon verified PayPal deposit capture.
+      operationId: lockDispatchSlot
+      tags:
+        - Dispatch Scheduling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchLockRequest'
+      responses:
+        '200':
+          description: Territory calendar slot locked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispatchLockResponse'
+
+  /api/mcp/zapier-sync:
+    post:
+      summary: Trigger Multi-App Downline CRM & Accounting Sync
+      description: Dispatches qualified contractor lead into Jobber, QuickBooks Online, and Google Calendar via Zapier Model Context Protocol.
+      operationId: triggerZapierMcpSync
+      tags:
+        - Zapier MCP Integration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZapierSyncRequest'
+      responses:
+        '200':
+          description: Multi-app sync chain executed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZapierSyncResponse'
+
+components:
+  securitySchemes:
+    PayPalWebhookSignature:
+      type: apiKey
+      in: header
+      name: PAYPAL-TRANSMISSION-SIG
+      description: PayPal Webhook verification cryptographic signature.
+
+  schemas:
+    CatalogResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: active
+        currency:
+          type: string
+          example: USD
+        trades:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: flooring-tile
+              title:
+                type: string
+                example: Tile & Custom Flooring
+              monthlySubscription:
+                type: number
+                example: 89.00
+              depositRange:
+                type: string
+                example: $149.00 - $250.00
+
+    QuoteRequest:
+      type: object
+      required:
+        - tradeId
+        - squareFootage
+        - materialType
+        - postalCode
+      properties:
+        tradeId:
+          type: string
+          example: flooring-tile
+        squareFootage:
+          type: number
+          example: 650
+        materialType:
+          type: string
+          example: porcelain-plank
+        postalCode:
+          type: string
+          example: '33813'
+
+    QuoteResponse:
+      type: object
+      properties:
+        estimatedLaborRange:
+          type: string
+          example: $2,600.00 - $3,250.00
+        wasteAllowanceSqFt:
+          type: number
+          example: 715
+        requiredDeposit:
+          type: number
+          example: 250.00
+        depositPolicy:
+          type: string
+          example: 100% credited against final invoice upon physical site takeoff
+
+    SpendingMandateRequest:
+      type: object
+      required:
+        - buyerAgentId
+        - amount
+        - recurrence
+        - category
+      properties:
+        buyerAgentId:
+          type: string
+          example: agent-pro-buyer-09
+        amount:
+          type: number
+          example: 89.00
+        recurrence:
+          type: string
+          enum: [one_time, monthly, annual]
+          example: monthly
+        category:
+          type: string
+          example: contractor-dispatch-ai
+
+    SpendingMandateResponse:
+      type: object
+      properties:
+        approved:
+          type: boolean
+          example: true
+        authorizedAmount:
+          type: number
+          example: 89.00
+        monthlyCapRemaining:
+          type: number
+          example: 11.00
+        mandateProofHash:
+          type: string
+          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+    ProvisionRequest:
+      type: object
+      required:
+        - subscriptionId
+        - contractorEmail
+        - areaCode
+      properties:
+        subscriptionId:
+          type: string
+          example: I-BW452NX993L2
+        contractorEmail:
+          type: string
+          example: adam@floorsmithllc.com
+        areaCode:
+          type: string
+          example: '863'
+
+    ProvisionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ALLOCATED
+        assignedDid:
+          type: string
+          example: '+18638026000'
+        carrier:
+          type: string
+          example: Telnyx LLC
+        routingState:
+          type: string
+          example: ACTIVE_10DLC_BOUND
+
+    DispatchLockRequest:
+      type: object
+      required:
+        - leadId
+        - territoryZone
+        - slotStartIso
+        - paypalTransactionId
+      properties:
+        leadId:
+          type: string
+          example: lead-sarah-jenkins
+        territoryZone:
+          type: string
+          example: Zone 2 - South Lakeland
+        slotStartIso:
+          type: string
+          example: '2026-10-06T10:00:00-04:00'
+        paypalTransactionId:
+          type: string
+          example: TXN-PAYPAL-994182
+
+    DispatchLockResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        slotLockedUntil:
+          type: string
+          example: '2026-10-06T11:15:00-04:00'
+        crewAssigned:
+          type: string
+          example: Crew B - Custom Tile Specialist
+
+    ZapierSyncRequest:
+      type: object
+      required:
+        - leadId
+        - customerName
+        - customerPhone
+        - propertyAddress
+        - depositAmount
+        - paypalTxnId
+      properties:
+        leadId:
+          type: string
+          example: lead-sarah-jenkins
+        customerName:
+          type: string
+          example: Sarah Jenkins
+        customerPhone:
+          type: string
+          example: '+18635550199'
+        propertyAddress:
+          type: string
+          example: '4822 Cleveland Heights Blvd, Lakeland, FL 33813'
+        depositAmount:
+          type: number
+          example: 250.00
+        paypalTxnId:
+          type: string
+          example: I-BW452NX993L2
+
+    ZapierSyncResponse:
+      type: object
+      properties:
+        jobberQuoteId:
+          type: string
+          example: JOB-883921
+        qboDraftInvoiceId:
+          type: string
+          example: QBO-INV-1094
+        googleCalendarEventId:
+          type: string
+          example: gcal_event_66029381
+        status:
+          type: string
+          example: COMPLETED
